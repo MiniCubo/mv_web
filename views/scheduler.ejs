@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Scheduler</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    
+    <!-- Correct CDN links -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <style>
+        /* Mobile-first responsive design */
+        body {
+            font-size: 16px; /* Prevents zoom on iOS */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        /* Form controls for mobile */
+        .form-control, .form-select {
+            font-size: 16px; /* Prevents zoom on iOS */
+            min-height: 44px; /* iOS minimum touch target */
+        }
+
+        .btn {
+            min-height: 44px; /* iOS minimum touch target */
+            font-size: 16px;
+            padding: 0.5rem 1rem;
+        }
+
+        /* Desktop styles */
+        @media (min-width: 768px) {
+            .scheduler-container {
+                overflow-x: auto;
+                white-space: nowrap;
+                padding: 1rem;
+                border: 1px solid #ddd;
+                background: white;
+            }
+            
+            .day-box {
+                display: inline-block;
+                width: 200px;
+                height: 280px;
+                margin-right: 10px;
+                border: 2px solid #aaa;
+                text-align: center;
+                padding: 10px;
+                background: #f9f9f9;
+                vertical-align: top;
+                border-radius: 8px;
+            }
+        }
+
+        /* Mobile styles */
+        @media (max-width: 767px) {
+            .container-fluid {
+                padding: 0.5rem;
+            }
+            
+            .scheduler-container {
+                padding: 0.5rem;
+                border: 1px solid #ddd;
+                background: white;
+                overflow-x: visible;
+                white-space: normal;
+            }
+            
+            .day-box {
+                display: block;
+                width: 100%;
+                max-width: 100%;
+                height: auto;
+                min-height: 280px;
+                margin: 0 0 15px 0;
+                border: 2px solid #aaa;
+                text-align: center;
+                padding: 15px;
+                background: #f9f9f9;
+                border-radius: 8px;
+            }
+
+            /* Stack form elements vertically on mobile */
+            .row > .col-md-3,
+            .row > .col-md-6 {
+                margin-bottom: 1rem;
+            }
+
+            /* Button adjustments for mobile */
+            .btn-group-mobile {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .btn-group-mobile .btn {
+                width: 100%;
+            }
+
+            /* Image preview adjustments for mobile */
+            .sample-image {
+                width: 60px !important;
+                height: 45px !important;
+                margin: 3px !important;
+            }
+        }
+
+        /* Common styles for all devices */
+        .day-box h6 {
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .image-container {
+            width: 100%;
+            height: 140px;
+            margin: 10px 0;
+            border: 2px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border-radius: 5px;
+            position: relative;
+        }
+        
+        .selected-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .image-placeholder {
+            color: #999;
+            font-size: 12px;
+            text-align: center;
+            padding: 10px;
+        }
+        
+        .image-selector {
+            margin-top: 8px;
+        }
+        
+        .image-selector select {
+            width: 100%;
+            font-size: 14px;
+            padding: 8px;
+            min-height: 44px; /* Touch target */
+        }
+        
+        .sample-image {
+            width: 80px;
+            height: 60px;
+            margin: 5px;
+            display: inline-block;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #f8f9fa;
+            touch-action: manipulation; /* Better touch response */
+        }
+
+        /* Touch improvements */
+        .sample-image:hover,
+        .sample-image:active {
+            border-color: #007bff;
+            transform: scale(1.05);
+            transition: all 0.2s ease;
+        }
+
+        /* Loading states */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* Export-friendly styles */
+        @media print {
+            .scheduler-container {
+                overflow: visible !important;
+                white-space: normal !important;
+            }
+            .day-box {
+                page-break-inside: avoid;
+                margin-bottom: 20px;
+                display: inline-block;
+                width: 200px;
+            }
+        }
+
+        /* Tablet styles */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .day-box {
+                width: 180px;
+                height: 260px;
+            }
+            
+            .sample-image {
+                width: 70px;
+                height: 50px;
+            }
+        }
+
+        /* Large mobile styles */
+        @media (min-width: 576px) and (max-width: 767px) {
+            .btn-group-mobile {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            
+            .btn-group-mobile .btn {
+                flex: 1;
+                min-width: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid p-2 p-md-4">
+        <h1 class="mb-4 text-center text-md-start">Custom Scheduler</h1>
+
+        <div class="row mb-4">
+            <div class="col-md-3 col-12">
+                <label class="form-label">Start Date:</label>
+                <input type="text" id="startDate" class="form-control">
+            </div>
+            <div class="col-md-3 col-12">
+                <label class="form-label">Number of Days:</label>
+                <input type="number" id="numDays" class="form-control" value="7" min="1" max="31">
+            </div>
+            <div class="col-md-6 col-12">
+                <label class="form-label">Available Images:</label>
+                <div class="mt-2" id="imagePreview">
+                    <!-- Image previews will be loaded here automatically -->
+                </div>
+            </div>
+        </div>
+
+        <div class="d-grid d-md-block mb-4">
+            <button class="btn btn-primary btn-lg" onclick="generateSchedule()">Generate Schedule</button>
+        </div>
+
+        <div id="scheduler" class="scheduler-container mb-4"></div>
+
+        <div class="btn-group-mobile d-md-flex gap-md-2">
+            <!-- <button class="btn btn-success" onclick="exportToPDF()">
+                <span class="d-none d-md-inline">Export as </span>PDF
+            </button>
+            <button class="btn btn-info" onclick="exportToPNG()">
+                <span class="d-none d-md-inline">Export as </span>PNG
+            </button> -->
+            <button class="btn btn-warning" onclick="printSchedule()">Print</button>
+            <button class="btn btn-secondary" onclick="clearAll()">Clear All</button>
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="loadingIndicator" class="text-center mt-3" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Processing...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <script>
+        // Available image options
+
+        const imageOptions = [
+            { value: '', label: 'Select Image', src: '' },
+            { value: 'grenn.png', label: 'Green Block', src: 'img/green.png' },
+            { value: 'i.png', label: 'Green I Block', src: 'img/i.png' },
+            { value: 'greenbaby.png', label: 'Green Baby Block', src: 'img/greenbaby.png' },
+             { value: 'white.png', label: 'White Baby Block', src: 'img/white.png' },
+            { value: 'yellow.png', label: 'Yellow Baby Block', src: 'img/yellow.png' },
+        ];
+
+        // Mobile detection
+        const isMobile = window.innerWidth <= 767;
+        const isTouch = 'ontouchstart' in window;
+
+        // Initialize flatpickr with mobile-friendly options
+        flatpickr("#startDate", { 
+            dateFormat: "Y-m-d",
+            defaultDate: new Date(),
+            enableTime: false,
+            clickOpens: true,
+            allowInput: !isMobile, // Disable manual input on mobile
+            disableMobile: false // Use native picker when available
+        });
+
+        // Load image previews
+        function loadImagePreviews() {
+            const previewContainer = document.getElementById('imagePreview');
+            previewContainer.innerHTML = '';
+            
+            imageOptions.forEach(option => {
+                if (option.value) { // Skip empty option
+                    const imgDiv = document.createElement('div');
+                    imgDiv.className = 'sample-image';
+                    imgDiv.style.backgroundImage = `url('${option.src}')`;
+                    imgDiv.style.backgroundSize = 'cover';
+                    imgDiv.style.backgroundPosition = 'center';
+                    imgDiv.style.backgroundRepeat = 'no-repeat';
+                    imgDiv.title = option.label;
+                    imgDiv.setAttribute('data-value', option.value);
+                    
+                    // Add touch event for mobile
+                    if (isTouch) {
+                        imgDiv.addEventListener('touchstart', function(e) {
+                            e.preventDefault();
+                            this.style.transform = 'scale(1.1)';
+                        });
+                        
+                        imgDiv.addEventListener('touchend', function(e) {
+                            e.preventDefault();
+                            this.style.transform = 'scale(1.05)';
+                            setTimeout(() => {
+                                this.style.transform = '';
+                            }, 200);
+                        });
+                    }
+                    
+                    previewContainer.appendChild(imgDiv);
+                }
+            });
+        }
+
+        // Load previews on page load
+        loadImagePreviews();
+
+        function generateSchedule() {
+            const startDate = document.getElementById('startDate').value;
+            const numDays = parseInt(document.getElementById('numDays').value);
+
+            if (!startDate || !numDays) {
+                alert('Please select start date and number of days!');
+                return;
+            }
+
+            // Show loading for mobile users
+            if (isMobile) {
+                showLoading(true);
+            }
+
+            const scheduler = document.getElementById('scheduler');
+            scheduler.innerHTML = ''; // clear
+
+            const start = new Date(startDate);
+
+            for (let i = 0; i < numDays; i++) {
+                const dayDate = new Date(start);
+                dayDate.setDate(start.getDate() + i);
+
+                const dayStr = dayDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+
+                // Create options for select dropdown
+                let optionsHtml = '';
+                imageOptions.forEach(option => {
+                    optionsHtml += `<option value="${option.value}">${option.label}</option>`;
+                });
+
+                const box = document.createElement('div');
+                box.className = 'day-box';
+                box.setAttribute('data-date', dayDate.toISOString().split('T')[0]);
+                box.innerHTML = `
+                    <h6 class="date-header">Day ${i+1}</h6>
+                    <div class="full-date" style="font-size: 11px; color: #666; margin-bottom: 10px;">${dayStr}</div>
+                    <div class="image-container" id="container-${i}">
+                        <div></div>
+                    </div>
+                    <div class="image-selector">
+                        <select class="form-select form-select-sm" onchange="updateImage(${i}, this.value)">
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                `;
+                scheduler.appendChild(box);
+            }
+
+            // Hide loading
+            if (isMobile) {
+                setTimeout(() => showLoading(false), 500);
+            }
+
+            // Scroll to schedule on mobile
+            if (isMobile) {
+                setTimeout(() => {
+                    scheduler.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 600);
+            }
+        }
+
+        function updateImage(dayIndex, imageValue) {
+            const container = document.getElementById(`container-${dayIndex}`);
+            
+            if (!imageValue) {
+                container.innerHTML = '<div></div>';
+                return;
+            }
+
+            const imageOption = imageOptions.find(opt => opt.value === imageValue);
+            if (imageOption && imageOption.src) {
+                container.innerHTML = `<img src="${imageOption.src}" alt="${imageOption.label}" class="selected-image">`;
+            }
+        }
+
+        function showLoading(show) {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            loadingIndicator.style.display = show ? 'block' : 'none';
+            
+            // Disable/enable buttons
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                if (show) {
+                    btn.classList.add('loading');
+                    btn.disabled = true;
+                } else {
+                    btn.classList.remove('loading');
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        async function exportToPDF() {
+            const scheduler = document.getElementById('scheduler');
+            
+            if (!scheduler.children.length) {
+                alert('Please generate a schedule first!');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                // Prepare for export
+                const originalOverflow = scheduler.style.overflow;
+                const originalWhiteSpace = scheduler.style.whiteSpace;
+                
+                scheduler.style.overflow = 'visible';
+                scheduler.style.whiteSpace = 'normal';
+                
+                // Mobile-specific adjustments
+                if (isMobile) {
+                    scheduler.style.transform = 'scale(1)';
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                const canvas = await html2canvas(scheduler, {
+                    backgroundColor: '#ffffff',
+                    scale: isMobile ? 1.5 : 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    width: scheduler.scrollWidth,
+                    height: scheduler.scrollHeight,
+                    scrollX: 0,
+                    scrollY: 0
+                });
+
+                // Restore original styles
+                scheduler.style.overflow = originalOverflow;
+                scheduler.style.whiteSpace = originalWhiteSpace;
+
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+
+                const pdf = new jsPDF({
+                    orientation: 'landscape',
+                    unit: 'px',
+                    format: [Math.max(canvas.width, 1200), Math.max(canvas.height, 800)]
+                });
+
+                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                
+                const today = new Date().toISOString().split('T')[0];
+                pdf.save(`schedule-${today}.pdf`);
+                
+            } catch (error) {
+                console.error('PDF export failed:', error);
+                alert('PDF export failed. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function exportToPNG() {
+            const scheduler = document.getElementById('scheduler');
+            
+            if (!scheduler.children.length) {
+                alert('Please generate a schedule first!');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const originalOverflow = scheduler.style.overflow;
+                const originalWhiteSpace = scheduler.style.whiteSpace;
+                
+                scheduler.style.overflow = 'visible';
+                scheduler.style.whiteSpace = 'normal';
+
+                if (isMobile) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                const canvas = await html2canvas(scheduler, {
+                    backgroundColor: '#ffffff',
+                    scale: isMobile ? 1.5 : 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    width: scheduler.scrollWidth,
+                    height: scheduler.scrollHeight,
+                    scrollX: 0,
+                    scrollY: 0
+                });
+
+                scheduler.style.overflow = originalOverflow;
+                scheduler.style.whiteSpace = originalWhiteSpace;
+
+                const imgData = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = imgData;
+                
+                const today = new Date().toISOString().split('T')[0];
+                link.download = `schedule-${today}.png`;
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+            } catch (error) {
+                console.error('PNG export failed:', error);
+                alert('PNG export failed. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function printSchedule() {
+            const scheduler = document.getElementById('scheduler');
+            
+            if (!scheduler.children.length) {
+                alert('Please generate a schedule first!');
+                return;
+            }
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Schedule</title>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            margin: 20px; 
+                            background: white;
+                        }
+                        .scheduler-container { 
+                            display: flex; 
+                            flex-wrap: wrap; 
+                            gap: 15px; 
+                            justify-content: flex-start;
+                        }
+                        .day-box { 
+                            width: 180px; 
+                            height: 280px; 
+                            border: 2px solid #aaa; 
+                            text-align: center; 
+                            padding: 10px; 
+                            background: #f9f9f9;
+                            page-break-inside: avoid;
+                            border-radius: 8px;
+                            box-sizing: border-box;
+                        }
+                        .day-box h6 {
+                            margin-bottom: 10px;
+                            padding-bottom: 5px;
+                            border-bottom: 1px solid #ddd;
+                            font-weight: bold;
+                            font-size: 14px;
+                        }
+                        .full-date {
+                            font-size: 10px;
+                            color: #666;
+                            margin-bottom: 10px;
+                        }
+                        .image-container { 
+                            width: 100%; 
+                            height: 140px; 
+                            margin: 10px 0; 
+                            border: 2px dashed #ccc; 
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            background: white;
+                            border-radius: 5px;
+                            box-sizing: border-box;
+                        }
+                        .selected-image { 
+                            max-width: 100%;
+                            max-height: 100%;
+                            object-fit: contain;
+                            border-radius: 4px;
+                        }
+                        .image-placeholder {
+                            color: #999;
+                            font-size: 12px;
+                            text-align: center;
+                        }
+                        @media print {
+                            body { 
+                                margin: 10px; 
+                            }
+                            .day-box {
+                                break-inside: avoid;
+                                margin-bottom: 10px;
+                            }
+                            .scheduler-container {
+                                gap: 10px;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1>Schedule</h1>
+                    <div class="scheduler-container">
+                        ${scheduler.innerHTML.replace(/<select[\s\S]*?<\/select>/g, '').replace(/<div class="image-selector">[\s\S]*?<\/div>/g, '')}
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        function clearAll() {
+            document.getElementById('scheduler').innerHTML = '';
+            document.getElementById('startDate').value = '';
+            document.getElementById('numDays').value = '7';
+        }
+
+        // Handle orientation changes on mobile
+        if (isMobile) {
+            window.addEventListener('orientationchange', function() {
+                setTimeout(() => {
+                    loadImagePreviews();
+                }, 500);
+            });
+        }
+
+        // Prevent double-tap zoom on iOS
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+    </script>
+
+</body>
+</html>
