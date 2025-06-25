@@ -47,7 +47,7 @@
             .day-box {
                 display: inline-block;
                 width: 200px;
-                height: 280px;
+                height: 380px; /* Increased height for comments */
                 margin-right: 10px;
                 border: 2px solid #aaa;
                 text-align: center;
@@ -77,7 +77,7 @@
                 width: 100%;
                 max-width: 100%;
                 height: auto;
-                min-height: 280px;
+                min-height: 380px; /* Increased height for comments */
                 margin: 0 0 15px 0;
                 border: 2px solid #aaa;
                 text-align: center;
@@ -122,7 +122,7 @@
         
         .image-container {
             width: 100%;
-            height: 140px;
+            height: 120px; /* Reduced height to make room for comments */
             margin: 10px 0;
             border: 2px dashed #ccc;
             display: flex;
@@ -148,6 +148,7 @@
         
         .image-selector {
             margin-top: 8px;
+            margin-bottom: 8px;
         }
         
         .image-selector select {
@@ -155,6 +156,41 @@
             font-size: 14px;
             padding: 8px;
             min-height: 44px; /* Touch target */
+        }
+
+        /* Comment section styles */
+        .comment-section {
+            margin-top: 10px;
+        }
+
+        .comment-section label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #666;
+            display: block;
+            margin-bottom: 5px;
+            text-align: left;
+        }
+
+        .comment-textarea {
+            width: 100%;
+            min-height: 60px;
+            font-size: 14px;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+            font-family: inherit;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+
+        .comment-textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
         }
         
         .sample-image {
@@ -183,6 +219,19 @@
             pointer-events: none;
         }
 
+        /* Add days section */
+        .add-days-section {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid #e9ecef;
+        }
+
+        .add-days-section .form-control {
+            max-width: 100px;
+        }
+
         /* Export-friendly styles */
         @media print {
             .scheduler-container {
@@ -194,6 +243,11 @@
                 margin-bottom: 20px;
                 display: inline-block;
                 width: 200px;
+                height: 380px;
+            }
+            .comment-textarea {
+                border: 1px solid #ccc !important;
+                background: white !important;
             }
         }
 
@@ -201,7 +255,7 @@
         @media (min-width: 768px) and (max-width: 1024px) {
             .day-box {
                 width: 180px;
-                height: 260px;
+                height: 360px;
             }
             
             .sample-image {
@@ -249,15 +303,39 @@
             <button class="btn btn-primary btn-lg" onclick="generateSchedule()">Generate Schedule</button>
         </div>
 
+        <!-- Add/Remove Days Section -->
+        <div id="addDaysSection" class="add-days-section" style="display: none;">
+            <h5 class="mb-3">Modify Schedule</h5>
+            <div class="row align-items-end">
+                <div class="col-md-3 col-6">
+                    <label class="form-label">Days to Add:</label>
+                    <input type="number" id="additionalDays" class="form-control" value="1" min="1" max="31">
+                </div>
+                <div class="col-md-3 col-6">
+                    <button class="btn btn-success" onclick="addMoreDays()">Add Days</button>
+                </div>
+                <div class="col-md-3 col-6 mt-3 mt-md-0">
+                    <label class="form-label">Days to Remove:</label>
+                    <input type="number" id="removeDays" class="form-control" value="1" min="1" max="31">
+                </div>
+                <div class="col-md-3 col-6 mt-3 mt-md-0">
+                    <button class="btn btn-danger" onclick="removeLatestDays()">Remove Days</button>
+                </div>
+            </div>
+            <div class="mt-2">
+                <small class="text-muted">Current schedule has <span id="currentDayCount">0</span> days</small>
+            </div>
+        </div>
+
         <div id="scheduler" class="scheduler-container mb-4"></div>
 
         <div class="btn-group-mobile d-md-flex gap-md-2">
-            <!-- <button class="btn btn-success" onclick="exportToPDF()">
+            <button class="btn btn-success" onclick="exportToPDF()">
                 <span class="d-none d-md-inline">Export as </span>PDF
             </button>
             <button class="btn btn-info" onclick="exportToPNG()">
                 <span class="d-none d-md-inline">Export as </span>PNG
-            </button> -->
+            </button>
             <button class="btn btn-warning" onclick="printSchedule()">Print</button>
             <button class="btn btn-secondary" onclick="clearAll()">Clear All</button>
         </div>
@@ -275,7 +353,6 @@
 
     <script>
         // Available image options
-
         const imageOptions = [
             { value: '', label: 'Select Image', src: '' },
             { value: 'grenn.png', label: 'Green Block', src: 'img/green.png' },
@@ -288,6 +365,13 @@
         // Mobile detection
         const isMobile = window.innerWidth <= 767;
         const isTouch = 'ontouchstart' in window;
+
+        // Track current schedule state
+        let currentSchedule = {
+            startDate: null,
+            totalDays: 0,
+            dayBoxes: []
+        };
 
         // Initialize flatpickr with mobile-friendly options
         flatpickr("#startDate", { 
@@ -356,43 +440,16 @@
             const scheduler = document.getElementById('scheduler');
             scheduler.innerHTML = ''; // clear
 
-            const start = new Date(startDate);
+            // Update current schedule state
+            currentSchedule.startDate = new Date(startDate);
+            currentSchedule.totalDays = numDays;
+            currentSchedule.dayBoxes = [];
 
-            for (let i = 0; i < numDays; i++) {
-                const dayDate = new Date(start);
-                dayDate.setDate(start.getDate() + i);
+            createDayBoxes(currentSchedule.startDate, numDays, 0);
 
-                const dayStr = dayDate.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-
-
-                // Create options for select dropdown
-                let optionsHtml = '';
-                imageOptions.forEach(option => {
-                    optionsHtml += `<option value="${option.value}">${option.label}</option>`;
-                });
-
-                const box = document.createElement('div');
-                box.className = 'day-box';
-                box.setAttribute('data-date', dayDate.toISOString().split('T')[0]);
-                box.innerHTML = `
-                    <h6 class="date-header">Day ${i+1}</h6>
-                    <div class="full-date" style="font-size: 11px; color: #666; margin-bottom: 10px;">${dayStr}</div>
-                    <div class="image-container" id="container-${i}">
-                        <div></div>
-                    </div>
-                    <div class="image-selector">
-                        <select class="form-select form-select-sm" onchange="updateImage(${i}, this.value)">
-                            ${optionsHtml}
-                        </select>
-                    </div>
-                `;
-                scheduler.appendChild(box);
-            }
+            // Show the add/remove days section
+            document.getElementById('addDaysSection').style.display = 'block';
+            updateDayCount();
 
             // Hide loading
             if (isMobile) {
@@ -405,6 +462,153 @@
                     scheduler.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 600);
             }
+        }
+
+        function createDayBoxes(startDate, numDays, startIndex) {
+            const scheduler = document.getElementById('scheduler');
+
+            for (let i = 0; i < numDays; i++) {
+                const dayDate = new Date(startDate);
+                dayDate.setDate(startDate.getDate() + i);
+
+                const dayStr = dayDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+                // Create options for select dropdown
+                let optionsHtml = '';
+                imageOptions.forEach(option => {
+                    optionsHtml += `<option value="${option.value}">${option.label}</option>`;
+                });
+
+                const dayIndex = startIndex + i;
+                const box = document.createElement('div');
+                box.className = 'day-box';
+                box.setAttribute('data-date', dayDate.toISOString().split('T')[0]);
+                box.innerHTML = `
+                    <h6 class="date-header">Day ${dayIndex + 1}</h6>
+                    <div class="full-date" style="font-size: 11px; color: #666; margin-bottom: 10px;">${dayStr}</div>
+                    <div class="image-container" id="container-${dayIndex}">
+                        <div></div>
+                    </div>
+                    <div class="image-selector">
+                        <select class="form-select form-select-sm" onchange="updateImage(${dayIndex}, this.value)">
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                    <div class="comment-section">
+                        <label for="comment-${dayIndex}">Comments:</label>
+                        <textarea class="comment-textarea" id="comment-${dayIndex}" placeholder="Add your notes here..."></textarea>
+                    </div>
+                `;
+                scheduler.appendChild(box);
+                currentSchedule.dayBoxes.push({
+                    date: dayDate,
+                    index: dayIndex
+                });
+            }
+        }
+
+        function addMoreDays() {
+            const additionalDays = parseInt(document.getElementById('additionalDays').value);
+            
+            if (!additionalDays || additionalDays < 1) {
+                alert('Please enter a valid number of days to add!');
+                return;
+            }
+
+            if (currentSchedule.totalDays === 0) {
+                alert('Please generate a schedule first!');
+                return;
+            }
+
+            // Show loading
+            if (isMobile) {
+                showLoading(true);
+            }
+
+            // Calculate the start date for new days (day after the last day)
+            const lastDate = new Date(currentSchedule.startDate);
+            lastDate.setDate(currentSchedule.startDate.getDate() + currentSchedule.totalDays);
+
+            // Create new day boxes
+            createDayBoxes(lastDate, additionalDays, currentSchedule.totalDays);
+
+            // Update the schedule state
+            currentSchedule.totalDays += additionalDays;
+            updateDayCount();
+
+            // Reset the additional days input
+            document.getElementById('additionalDays').value = '1';
+
+            // Hide loading
+            if (isMobile) {
+                setTimeout(() => showLoading(false), 300);
+            }
+
+            // Scroll to the new days on mobile
+            if (isMobile) {
+                setTimeout(() => {
+                    const lastBox = document.querySelector('.day-box:last-child');
+                    if (lastBox) {
+                        lastBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 400);
+            }
+        }
+
+        function removeLatestDays() {
+            const removeDaysCount = parseInt(document.getElementById('removeDays').value);
+            
+            if (!removeDaysCount || removeDaysCount < 1) {
+                alert('Please enter a valid number of days to remove!');
+                return;
+            }
+
+            if (currentSchedule.totalDays === 0) {
+                alert('No days to remove!');
+                return;
+            }
+
+            if (removeDaysCount > currentSchedule.totalDays) {
+                alert(`You can't remove more days (${removeDaysCount}) than exist in the schedule (${currentSchedule.totalDays})!`);
+                return;
+            }
+
+            // Show loading
+            if (isMobile) {
+                showLoading(true);
+            }
+
+            const scheduler = document.getElementById('scheduler');
+            const dayBoxes = Array.from(scheduler.children);
+
+            // Remove the specified number of days from the end
+            for (let i = 0; i < removeDaysCount; i++) {
+                if (dayBoxes.length > 0) {
+                    scheduler.removeChild(dayBoxes[dayBoxes.length - 1 - i]);
+                }
+            }
+
+            // Update the schedule state
+            currentSchedule.totalDays = Math.max(0, currentSchedule.totalDays - removeDaysCount);
+            currentSchedule.dayBoxes = currentSchedule.dayBoxes.slice(0, -removeDaysCount);
+            updateDayCount();
+
+            // Reset the remove days input
+            document.getElementById('removeDays').value = '1';
+
+            // Hide loading
+            if (isMobile) {
+                setTimeout(() => showLoading(false), 300);
+            }
+        }
+
+        function updateDayCount() {
+            document.getElementById('currentDayCount').textContent = currentSchedule.totalDays;
         }
 
         function updateImage(dayIndex, imageValue) {
@@ -438,105 +642,150 @@
             });
         }
 
-        async function exportToPDF() {
+        async function createImageData() {
             const scheduler = document.getElementById('scheduler');
             
             if (!scheduler.children.length) {
                 alert('Please generate a schedule first!');
-                return;
+                return null;
             }
 
             showLoading(true);
 
             try {
-                // Prepare for export
-                const originalOverflow = scheduler.style.overflow;
-                const originalWhiteSpace = scheduler.style.whiteSpace;
+                // Create a clean clone for export
+                const clone = scheduler.cloneNode(true);
+                clone.style.position = 'absolute';
+                clone.style.left = '-9999px';
+                clone.style.width = scheduler.offsetWidth + 'px';
+                clone.style.overflow = 'visible';
+                clone.style.whiteSpace = 'normal';
+                clone.style.backgroundColor = 'white';
                 
-                scheduler.style.overflow = 'visible';
-                scheduler.style.whiteSpace = 'normal';
-                
-                // Mobile-specific adjustments
-                if (isMobile) {
-                    scheduler.style.transform = 'scale(1)';
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
+                // Process all day boxes
+                const dayBoxes = clone.querySelectorAll('.day-box');
+                dayBoxes.forEach(box => {
+                    // Make sure text is visible
+                    box.style.zIndex = '10';
+                    box.style.position = 'relative';
+                    
+                    // Replace textareas with properly formatted divs
+                    const textareas = box.querySelectorAll('textarea');
+                    textareas.forEach(textarea => {
+                        const div = document.createElement('div');
+                        div.className = 'export-comment';
+                        div.style.width = '100%';
+                        div.style.minHeight = '60px';
+                        div.style.padding = '6px';
+                        div.style.border = '1px solid #ccc';
+                        div.style.whiteSpace = 'pre-wrap';
+                        div.style.wordWrap = 'break-word';
+                        div.style.overflow = 'visible';
+                        div.style.backgroundColor = 'white';
+                        div.style.fontFamily = 'Arial, sans-serif';
+                        div.style.fontSize = '14px';
+                        div.style.lineHeight = '1.4';
+                        
+                        // Properly handle line breaks
+                        const lines = textarea.value.split('\n');
+                        lines.forEach((line, i) => {
+                            if (i > 0) div.appendChild(document.createElement('br'));
+                            div.appendChild(document.createTextNode(line));
+                        });
+                        
+                        if (textarea.value === '') {
+                            div.appendChild(document.createTextNode('No comments'));
+                        }
+                        
+                        textarea.parentNode.replaceChild(div, textarea);
+                    });
 
-                const canvas = await html2canvas(scheduler, {
+                    // Replace selects with their selected value
+                    const selects = box.querySelectorAll('select');
+                    selects.forEach(select => {
+                        const div = document.createElement('div');
+                        div.className = 'export-select-value';
+                        div.textContent = select.options[select.selectedIndex].text;
+                        div.style.padding = '8px';
+                        div.style.border = '1px solid #ced4da';
+                        div.style.borderRadius = '4px';
+                        div.style.backgroundColor = '#fff';
+                        div.style.fontFamily = 'Arial, sans-serif';
+                        div.style.fontSize = '14px';
+                        select.parentNode.replaceChild(div, select);
+                    });
+                    
+                    // Ensure image container is properly visible
+                    const imgContainer = box.querySelector('.image-container');
+                    if (imgContainer) {
+                        imgContainer.style.backgroundColor = 'white';
+                        imgContainer.style.zIndex = '5';
+                    }
+                });
+
+                document.body.appendChild(clone);
+
+                const canvas = await html2canvas(clone, {
                     backgroundColor: '#ffffff',
                     scale: isMobile ? 1.5 : 2,
                     useCORS: true,
                     allowTaint: true,
-                    width: scheduler.scrollWidth,
-                    height: scheduler.scrollHeight,
+                    width: clone.scrollWidth,
+                    height: clone.scrollHeight,
                     scrollX: 0,
-                    scrollY: 0
+                    scrollY: 0,
+                    logging: true
                 });
 
-                // Restore original styles
-                scheduler.style.overflow = originalOverflow;
-                scheduler.style.whiteSpace = originalWhiteSpace;
+                document.body.removeChild(clone);
 
-                const imgData = canvas.toDataURL('image/png');
-                const { jsPDF } = window.jspdf;
-
-                const pdf = new jsPDF({
-                    orientation: 'landscape',
-                    unit: 'px',
-                    format: [Math.max(canvas.width, 1200), Math.max(canvas.height, 800)]
-                });
-
-                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-                
-                const today = new Date().toISOString().split('T')[0];
-                pdf.save(`schedule-${today}.pdf`);
-                
-            } catch (error) {
-                console.error('PDF export failed:', error);
-                alert('PDF export failed. Please try again.');
+                return {
+                    dataUrl: canvas.toDataURL('image/png'),
+                    width: canvas.width,
+                    height: canvas.height
+                };
+            }
+            catch (error) {
+                console.error('Image creation error:', error);
+                alert('Failed to create image data. Please try again.');
+                return null;
             } finally {
                 showLoading(false);
             }
         }
 
-        async function exportToPNG() {
-            const scheduler = document.getElementById('scheduler');
-            
-            if (!scheduler.children.length) {
-                alert('Please generate a schedule first!');
-                return;
-            }
-
-            showLoading(true);
+        async function exportToPDF() {
+            const imageData = await createImageData();
+            if (!imageData) return;
 
             try {
-                const originalOverflow = scheduler.style.overflow;
-                const originalWhiteSpace = scheduler.style.whiteSpace;
+                const { jsPDF } = window.jspdf;
+                const pdfWidth = imageData.width * 0.75;
+                const pdfHeight = imageData.height * 0.75;
                 
-                scheduler.style.overflow = 'visible';
-                scheduler.style.whiteSpace = 'normal';
-
-                if (isMobile) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
-
-                const canvas = await html2canvas(scheduler, {
-                    backgroundColor: '#ffffff',
-                    scale: isMobile ? 1.5 : 2,
-                    useCORS: true,
-                    allowTaint: true,
-                    width: scheduler.scrollWidth,
-                    height: scheduler.scrollHeight,
-                    scrollX: 0,
-                    scrollY: 0
+                const pdf = new jsPDF({
+                    orientation: pdfWidth > pdfHeight ? 'landscape' : 'portrait',
+                    unit: 'px',
+                    format: [pdfWidth, pdfHeight]
                 });
 
-                scheduler.style.overflow = originalOverflow;
-                scheduler.style.whiteSpace = originalWhiteSpace;
+                pdf.addImage(imageData.dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                
+                const today = new Date().toISOString().split('T')[0];
+                pdf.save(`schedule-${today}.pdf`);
+            } catch (error) {
+                console.error('PDF export failed:', error);
+                alert('PDF export failed. Please try again.');
+            }
+        }
 
-                const imgData = canvas.toDataURL('image/png');
+        async function exportToPNG() {
+            const imageData = await createImageData();
+            if (!imageData) return;
+
+            try {
                 const link = document.createElement('a');
-                link.href = imgData;
+                link.href = imageData.dataUrl;
                 
                 const today = new Date().toISOString().split('T')[0];
                 link.download = `schedule-${today}.png`;
@@ -544,12 +793,9 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                
             } catch (error) {
                 console.error('PNG export failed:', error);
                 alert('PNG export failed. Please try again.');
-            } finally {
-                showLoading(false);
             }
         }
 
@@ -560,6 +806,49 @@
                 alert('Please generate a schedule first!');
                 return;
             }
+
+            showLoading(true);
+
+            // Create a temporary container with all the schedule data
+            const tempContainer = document.createElement('div');
+            tempContainer.className = 'scheduler-container';
+            
+            const dayBoxes = Array.from(scheduler.children);
+            
+            dayBoxes.forEach((box, index) => {
+                const dateHeader = box.querySelector('.date-header').textContent;
+                const fullDate = box.querySelector('.full-date').textContent;
+                const selectedImage = box.querySelector('.selected-image');
+                const commentTextarea = box.querySelector('.comment-textarea');
+                
+                // Create a clean version for printing
+                const printBox = document.createElement('div');
+                printBox.className = 'day-box';
+                
+                let imageHtml = '';
+                if (selectedImage) {
+                    // Get the image source and create a proper img tag
+                    const imgSrc = selectedImage.src;
+                    const imgAlt = selectedImage.alt;
+                    imageHtml = `<img src="${imgSrc}" alt="${imgAlt}" class="selected-image">`;
+                } else {
+                    imageHtml = '<div class="image-placeholder">No image selected</div>';
+                }
+                
+                const commentValue = commentTextarea ? commentTextarea.value : '';
+                
+                printBox.innerHTML = `
+                    <h6 class="date-header">${dateHeader}</h6>
+                    <div class="full-date">${fullDate}</div>
+                    <div class="image-container">${imageHtml}</div>
+                    <div class="comment-section">
+                        <label>Comments:</label>
+                        <div class="comment-content">${commentValue}</div>
+                    </div>
+                `;
+                
+                tempContainer.appendChild(printBox);
+            });
 
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
@@ -581,7 +870,8 @@
                         }
                         .day-box { 
                             width: 180px; 
-                            height: 280px; 
+                            height: auto;
+                            min-height: 380px;
                             border: 2px solid #aaa; 
                             text-align: center; 
                             padding: 10px; 
@@ -604,7 +894,7 @@
                         }
                         .image-container { 
                             width: 100%; 
-                            height: 140px; 
+                            height: 120px; 
                             margin: 10px 0; 
                             border: 2px dashed #ccc; 
                             display: flex;
@@ -624,6 +914,30 @@
                             color: #999;
                             font-size: 12px;
                             text-align: center;
+                            padding: 10px;
+                        }
+                        .comment-section {
+                            margin-top: 10px;
+                            text-align: left;
+                        }
+                        .comment-section label {
+                            font-size: 12px;
+                            font-weight: bold;
+                            color: #666;
+                            display: block;
+                            margin-bottom: 5px;
+                        }
+                        .comment-content {
+                            width: 100%;
+                            min-height: 60px;
+                            font-size: 11px;
+                            padding: 6px;
+                            border: 1px solid #ccc;
+                            border-radius: 4px;
+                            background: white;
+                            box-sizing: border-box;
+                            word-wrap: break-word;
+                            white-space: pre-wrap;
                         }
                         @media print {
                             body { 
@@ -642,19 +956,68 @@
                 <body>
                     <h1>Schedule</h1>
                     <div class="scheduler-container">
-                        ${scheduler.innerHTML.replace(/<select[\s\S]*?<\/select>/g, '').replace(/<div class="image-selector">[\s\S]*?<\/div>/g, '')}
+                        ${tempContainer.innerHTML}
                     </div>
                 </body>
                 </html>
             `);
+            
             printWindow.document.close();
-            printWindow.print();
+            
+            // Wait for images to load before printing
+            const images = printWindow.document.querySelectorAll('img');
+            let loadedImages = 0;
+            const totalImages = images.length;
+            
+            if (totalImages === 0) {
+                // No images to wait for
+                setTimeout(() => {
+                    printWindow.print();
+                    showLoading(false);
+                }, 500);
+            } else {
+                const checkImagesLoaded = () => {
+                    loadedImages++;
+                    if (loadedImages >= totalImages) {
+                        setTimeout(() => {
+                            printWindow.print();
+                            showLoading(false);
+                        }, 500);
+                    }
+                };
+                
+                images.forEach(img => {
+                    if (img.complete) {
+                        checkImagesLoaded();
+                    } else {
+                        img.onload = checkImagesLoaded;
+                        img.onerror = checkImagesLoaded; // Handle failed loads
+                    }
+                });
+                
+                // Fallback timeout in case images don't load
+                setTimeout(() => {
+                    if (loadedImages < totalImages) {
+                        printWindow.print();
+                        showLoading(false);
+                    }
+                }, 3000);
+            }
         }
 
         function clearAll() {
             document.getElementById('scheduler').innerHTML = '';
             document.getElementById('startDate').value = '';
             document.getElementById('numDays').value = '7';
+            document.getElementById('additionalDays').value = '1';
+            document.getElementById('addDaysSection').style.display = 'none';
+            
+            // Reset schedule state
+            currentSchedule = {
+                startDate: null,
+                totalDays: 0,
+                dayBoxes: []
+            };
         }
 
         // Handle orientation changes on mobile
