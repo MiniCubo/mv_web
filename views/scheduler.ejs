@@ -715,9 +715,6 @@
                             div.appendChild(document.createTextNode(line));
                         });
                         
-                        if (textarea.value === '') {
-                            div.appendChild(document.createTextNode('No comments'));
-                        }
                         
                         textarea.parentNode.replaceChild(div, textarea);
                     });
@@ -726,14 +723,6 @@
                     const selects = box.querySelectorAll('select');
                     selects.forEach(select => {
                         const div = document.createElement('div');
-                        div.className = 'export-select-value';
-                        div.textContent = select.options[select.selectedIndex].text;
-                        div.style.padding = '8px';
-                        div.style.border = '1px solid #ced4da';
-                        div.style.borderRadius = '4px';
-                        div.style.backgroundColor = '#fff';
-                        div.style.fontFamily = 'Arial, sans-serif';
-                        div.style.fontSize = '14px';
                         select.parentNode.replaceChild(div, select);
                     });
                     
