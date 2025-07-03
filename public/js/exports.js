@@ -43,7 +43,19 @@ async function createImageData() {
                 margin: '0',
                 fontSize: '10px'
             });
-            
+
+            const fullDate = exportBox.querySelector('.full-date');
+                if (fullDate) {
+                    const dateText = fullDate.textContent.split(',');
+                    fullDate.textContent = dateText[1] + dateText[2];
+                    Object.assign(fullDate.style, {
+                        fontSize: '10px',
+                        marginBottom: '6px',
+                        color: '#666',
+                        flex: '0 0 auto'
+                    });
+                }
+
             // Compact image container
             const imgContainer = exportBox.querySelector('.image-container');
             if (imgContainer) {
@@ -57,9 +69,10 @@ async function createImageData() {
             const textarea = exportBox.querySelector('textarea');
             if (textarea) {
                 Object.assign(textarea.style, {
-                    minHeight: '30px',
-                    fontSize: '9px',
-                    padding: '2px'
+                    minHeight: '40px',
+                    fontSize: '12px',
+                    padding: '4px',
+                    lineHeight: '1.3'
                 });
             }
             
@@ -126,6 +139,7 @@ async function createPDFPages() {
                 position: 'relative'
             });
 
+
             // Add title with better spacing
             const title = document.createElement('h2');
             title.textContent = `Schedule - Page ${Math.floor(i / itemsPerPage) + 1}`;
@@ -186,6 +200,8 @@ async function createPDFPages() {
                 // Style date
                 const fullDate = pdfBox.querySelector('.full-date');
                 if (fullDate) {
+                    const dateText = fullDate.textContent.split(',');
+                    fullDate.textContent = dateText[1] + dateText[2];
                     Object.assign(fullDate.style, {
                         fontSize: '10px',
                         marginBottom: '6px',
@@ -193,6 +209,7 @@ async function createPDFPages() {
                         flex: '0 0 auto'
                     });
                 }
+
                 
                 // Style image container (similar to PNG)
                 const imgContainer = pdfBox.querySelector('.image-container');
@@ -226,10 +243,10 @@ async function createPDFPages() {
                     const commentDiv = document.createElement('div');
                     Object.assign(commentDiv.style, {
                         width: '100%',
-                        minHeight: '80px',
-                        maxHeight: '80px', // Limit height to prevent overflow
-                        fontSize: '10px',
-                        padding: '6px',
+                        minHeight: '90px',  // Increased from 80px
+                        maxHeight: '90px',  // Increased from 80px
+                        fontSize: '14px',   // Increased from 10px
+                        padding: '8px',     // Increased from 6px
                         border: '1px solid #ddd',
                         borderRadius: '3px',
                         backgroundColor: 'white',
@@ -237,15 +254,12 @@ async function createPDFPages() {
                         wordWrap: 'break-word',
                         overflow: 'hidden',
                         flex: '1 1 auto',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        lineHeight: '1.4'   // Added for better readability
                     });
                     
-                    // Truncate text if too long
-                    let text = textarea.value;
-                    if (text.length > 150) {
-                        text = text.substring(0, 147) + '...';
-                    }
-                    commentDiv.textContent = text;
+                    // Remove truncation since we want to show full comments
+                    commentDiv.textContent = textarea.value;
                     
                     const commentSection = textarea.closest('.comment-section');
                     if (commentSection) {
